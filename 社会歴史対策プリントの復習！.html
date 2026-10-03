@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>社会確認問題</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;background:#f5f7fb;color:#172033}
+.app{max-width:760px;margin:0 auto;padding:28px 18px 40px}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.badge{background:#172033;color:white;padding:8px 14px;border-radius:999px;font-weight:800;font-size:14px;letter-spacing:.04em}
+.streak{font-size:14px;font-weight:900;color:#f97316;margin-left:10px;white-space:nowrap}.streak.hot{animation:streakPop .25s ease-out}
+@keyframes streakPop{from{transform:scale(.8);opacity:.4}to{transform:scale(1);opacity:1}}
+.count{font-weight:800;color:#64748b}
+.progress{height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-bottom:22px}
+.progress-bar{height:100%;width:3.33%;background:#2563eb;border-radius:999px;transition:width .25s ease}
+.card{background:white;border:1px solid #e2e8f0;border-radius:22px;padding:28px;box-shadow:0 12px 30px rgba(15,23,42,.07)}
+.q-number{color:#2563eb;font-weight:900;font-size:14px;margin-bottom:8px}
+h1{font-size:clamp(22px,4vw,30px);line-height:1.5;margin:0 0 24px;white-space:pre-line}
+.choices{display:grid;gap:12px}
+.choice{width:100%;border:3px solid;border-radius:16px;background:white;color:#000;padding:16px 18px;display:flex;align-items:center;gap:13px;text-align:left;font-size:17px;font-weight:750;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.choice:hover{transform:translateY(-2px);box-shadow:0 7px 16px rgba(15,23,42,.09)}.choice.correct-highlight{background:#f0fdf4;box-shadow:0 0 0 4px #16a34a,0 8px 20px rgba(22,163,74,.25);transform:scale(1.02)}
+.choice:disabled{cursor:default}
+.choice.correct-answer{
+  box-shadow:0 0 0 5px rgba(22,163,74,.22),0 0 24px rgba(22,163,74,.35);
+  border-color:#16a34a !important;
+  background:#f0fdf4;
+  transform:scale(1.02);
+  animation:correctPulse .65s ease-in-out 2;
+}
+@keyframes correctPulse{
+  0%,100%{transform:scale(1.02)}
+  50%{transform:scale(1.045)}
+}
+.choice.a{border-color:#ef4444}.choice.b{border-color:#2563eb}.choice.c{border-color:#eab308}.choice.d{border-color:#22c55e}
+.letter{width:34px;height:34px;min-width:34px;display:grid;place-items:center;border-radius:10px;color:white;font-weight:900}
+.a .letter{background:#ef4444}.b .letter{background:#2563eb}.c .letter{background:#eab308;color:#172033}.d .letter{background:#22c55e}
+.next{display:none;margin:20px auto 0;border:0;border-radius:14px;padding:13px 22px;background:#172033;color:white;font-size:16px;font-weight:800;cursor:pointer}
+.answer-overlay{position:fixed;inset:0;display:grid;place-items:center;pointer-events:none;z-index:10;animation:pop .2s ease-out}
+.answer-text{font-size:clamp(52px,11vw,100px);font-weight:1000;text-shadow:0 5px 18px rgba(0,0,0,.15)}
+.correct{color:#16a34a}.wrong{color:#dc2626}
+@keyframes pop{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+.result{text-align:center}.result h2{font-size:36px;margin:0 0 10px}.score-label{font-size:18px;font-weight:800;color:#64748b;margin-top:18px}.score{font-size:72px;font-weight:1000;color:#2563eb;margin:6px 0 12px}.message{font-size:28px;font-weight:900;margin:0 0 22px;color:#172033}
+.again{border:0;border-radius:14px;padding:14px 24px;background:#2563eb;color:white;font-size:16px;font-weight:800;cursor:pointer}
+@media(max-width:520px){header{gap:7px}.streak{font-size:12px;margin-left:4px}}
+@media(max-width:520px){.app{padding:20px 12px 28px}.card{padding:21px 16px}.choice{font-size:15px;padding:14px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header><span class="badge">社会確認問題</span><span class="streak" id="streak">🔥 連続正解：0</span><span class="count" id="count">1 / 30</span></header>
+<div class="progress"><div class="progress-bar" id="progress"></div></div>
+<main class="card" id="card"></main>
+</div>
+<script>
+const questions = [{"q": "イギリスの思想家ロックは何を唱えたか？", "a": ["社会契約説", "人民主権", "三権分立", "王権神授説"], "correct": 0}, {"q": "三権分立を説いたのは誰か？", "a": ["ロック", "モンテスキュー", "ルソー", "クロムウェル"], "correct": 1}, {"q": "ルソーは何を主張したか？", "a": ["王権神授説", "三権分立", "人民主権", "社会主義"], "correct": 2}, {"q": "ピューリタン革命は何をきっかけにおきたのか？", "a": ["議会が国王を支持した", "フランスがイギリスを攻撃した", "産業革命が始まった", "国王が特権を乱用した"], "correct": 3}, {"q": "ピューリタン革命を指導したのは誰か？", "a": ["ジェームズ1世", "クロムウェル", "チャールズ1世", "ジョージ3世"], "correct": 1}, {"q": "1688年から89年に起こった革命は何ですか？", "a": ["フランス革命", "ピューリタン革命", "アメリカ独立革命", "名誉革命"], "correct": 3}, {"q": "名誉革命の際に何が定められたのか？", "a": ["権利章典", "人権宣言", "独立宣言", "ナポレオン法典"], "correct": 0}, {"q": "2度の革命を経て、イギリスでは世界初の何が始まったか？", "a": ["共和制・大統領政治", "絶対王政・官僚政治", "立憲君主制・議会政治", "社会主義・計画経済"], "correct": 2}, {"q": "アメリカはイギリスの新たな課税に対し、何と唱えて反対運動を始めたか？", "a": ["人民の人民による人民のための政治", "自由・平等・友愛", "王なくして政治なし", "代表なくして課税なし"], "correct": 3}, {"q": "アメリカは1776年に何を発表したか？", "a": ["権利章典", "独立宣言", "人権宣言", "合衆国憲法"], "correct": 1}, {"q": "アメリカ合衆国憲法の3つの柱は何ですか？", "a": ["人民主権、社会主義、共和制", "三権分立、絶対王政、連邦制", "国民主権、三権分立、連邦制", "国民主権、議会政治、社会主義"], "correct": 2}, {"q": "アメリカの初代大統領は誰か？", "a": ["ジョージ・ワシントン", "トーマス・ジェファソン", "エイブラハム・リンカーン", "ジェームズ・マディソン"], "correct": 0}, {"q": "アメリカの国旗の縞模様は何を表しているか？", "a": ["独立した13の都市", "13代の大統領", "13回の戦争", "最初にできた13州"], "correct": 3}, {"q": "フランスなどで見られた、国王が政治権力の全てを握る状態を何というか？", "a": ["立憲君主制", "絶対王政", "議会政治", "連邦制"], "correct": 1}, {"q": "ルイ14世がパリ郊外に建設した宮殿は何か？", "a": ["バッキンガム宮殿", "ルーブル宮殿", "ベルサイユ宮殿", "エリゼ宮殿"], "correct": 2}, {"q": "フランス革命では何が宣言されたのか？", "a": ["人権宣言", "独立宣言", "権利章典", "人民憲章"], "correct": 0}, {"q": "フランス革命後皇帝となったのは誰か？", "a": ["ルイ14世", "ロベスピエール", "ビスマルク", "ナポレオン"], "correct": 3}, {"q": "ナポレオンが定めた法律を何というか？", "a": ["権利章典", "ナポレオン法典", "人権宣言", "フランス民法典ではない別の法律"], "correct": 1}, {"q": "ドイツで活躍し、鉄血宰相と呼ばれたのは誰か？", "a": ["ナポレオン", "リンカーン", "ビスマルク", "メッテルニヒ"], "correct": 2}, {"q": "世界で初めて男子普通選挙が行われた国はどこか？", "a": ["イギリス", "アメリカ", "ドイツ", "フランス"], "correct": 3}, {"q": "領土の拡大を目指すロシアはどのような政策をとったか？", "a": ["南下政策", "西進政策", "鎖国政策", "門戸開放政策"], "correct": 0}, {"q": "南北戦争はなぜ起こったのか、理由を説明しなさい。", "a": ["南北で宗教が完全に異なっていたため", "ロシアとの戦争が起こったため", "南北での思想のちがい", "フランス革命の影響で王政が廃止されたため"], "correct": 2}, {"q": "南北戦争で北部を率いた大統領は誰か？", "a": ["ジョージ・ワシントン", "リンカーン", "ジェファソン", "ビスマルク"], "correct": 1}, {"q": "以下がリンカーンの言葉である。空欄に入る言葉を答えなさい。\n（　　　）の（　　　）による（　　　）のための政治", "a": ["国民・国民・国民", "政府・政府・政府", "自由・自由・自由", "人民・人民・人民"], "correct": 3}, {"q": "産業革命のきっかけは何の発明か？", "a": ["蒸気機関", "電信機", "内燃機関", "電球"], "correct": 0}, {"q": "蒸気機関はどのような背景があって技術改良が進められたか？", "a": ["アメリカ産の鉄に対抗するため", "フランスの蒸気船に対抗するため", "インド産の安い綿製品に対抗するため", "ロシアの農業に対抗するため"], "correct": 2}, {"q": "産業革命を経て、イギリスは何と呼ばれるようになったのか？", "a": ["世界の農場", "世界の工場", "世界の銀行", "世界の市場"], "correct": 1}, {"q": "産業革命にはどのような弊害があったのか？", "a": ["人口の減少だけが起こった", "農業の完全な消滅", "世界各国の鎖国", "環境汚染"], "correct": 3}, {"q": "資本主義とはどのようなものか、簡潔に説明しなさい。", "a": ["国がすべての企業を所有して経済を管理すること", "国王が経済活動をすべて決めること", "個人や企業が利益をだすことを目的に自由に経済活動を行うこと", "農民が共同で土地を所有すること"], "correct": 2}, {"q": "資本主義に対抗する考えとして何があるか？", "a": ["社会主義、共産主義", "絶対王政、立憲君主制", "自由主義、帝国主義", "三権分立、連邦制"], "correct": 0}];
+// クイズ開始時に、正解・不正解を含む4つの選択肢を毎回シャッフル
+questions.forEach(q=>{
+  const correctText=q.a[q.correct];
+  const shuffled=q.a.slice().sort(()=>Math.random()-0.5);
+  q.a=shuffled;
+  q.correct=q.a.indexOf(correctText);
+});
+let current=0,score=0,streak=0;
+const card=document.getElementById("card"),count=document.getElementById("count"),progress=document.getElementById("progress"),streakEl=document.getElementById("streak");
+
+function updateStreak(){streakEl.textContent=`🔥 連続正解：${streak}`;streakEl.classList.remove("hot");void streakEl.offsetWidth;streakEl.classList.add("hot");}
+
+function playCorrectSound(){
+  const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
+  const ctx=new C(),now=ctx.currentTime;
+  [[523.25,0],[659.25,.10],[783.99,.20]].forEach(([f,t])=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.value=f;g.gain.setValueAtTime(.0001,now+t);g.gain.exponentialRampToValueAtTime(.16,now+t+.02);g.gain.exponentialRampToValueAtTime(.0001,now+t+.28);o.connect(g).connect(ctx.destination);o.start(now+t);o.stop(now+t+.3)});
+  setTimeout(()=>ctx.close(),700);
+}
+function playWrongSound(){
+  const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
+  const ctx=new C(),now=ctx.currentTime,o=ctx.createOscillator(),g=ctx.createGain();o.type="sawtooth";o.frequency.setValueAtTime(180,now);o.frequency.exponentialRampToValueAtTime(90,now+.28);g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.12,now+.02);g.gain.exponentialRampToValueAtTime(.0001,now+.32);o.connect(g).connect(ctx.destination);o.start();o.stop(now+.34);setTimeout(()=>ctx.close(),500);
+}
+function playMilestoneSound(n){
+  const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
+  const ctx=new C(),now=ctx.currentTime;
+  const notes=n>=25?[523.25,659.25,783.99,1046.50,1318.51]:n>=15?[523.25,659.25,783.99,1046.50]:[392.00,523.25,659.25,783.99];
+  notes.forEach((f,i)=>{
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type=i===notes.length-1?"triangle":"sine";
+    o.frequency.value=f;
+    const t=now+i*.11;
+    g.gain.setValueAtTime(.0001,t);
+    g.gain.exponentialRampToValueAtTime(.18,t+.025);
+    g.gain.exponentialRampToValueAtTime(.0001,t+.34);
+    o.connect(g).connect(ctx.destination);o.start(t);o.stop(t+.36);
+  });
+  const o=ctx.createOscillator(),g=ctx.createGain();
+  o.type="triangle";o.frequency.value=n===30?1567.98:1046.50;
+  g.gain.setValueAtTime(.0001,now+notes.length*.11);
+  g.gain.exponentialRampToValueAtTime(n===30?.24:.16,now+notes.length*.11+.03);
+  g.gain.exponentialRampToValueAtTime(.0001,now+notes.length*.11+.65);
+  o.connect(g).connect(ctx.destination);o.start(now+notes.length*.11);o.stop(now+notes.length*.11+.7);
+  setTimeout(()=>ctx.close(),1500);
+}
+function render(){
+ if(current>=questions.length){
+  progress.style.width="100%"; count.textContent=`${questions.length} / ${questions.length}`;
+  card.innerHTML=`<div class="result"><div class="q-number">QUIZ COMPLETE</div><h2>おつかれさま！</h2><div class="score-label">あなたの点数</div><div class="score">${score} / ${questions.length} 点</div><div class="score-label">${Math.round(score / questions.length * 100)}％正解</div><div class="message">${score === 30 ? "完璧だ！🎉" : score >= 25 ? "すごい！あと少し！" : score >= 20 ? "あとちょっと！" : score >= 10 ? "もう少し復習してみよう！" : "ここから頑張ろう！"}</div><button class="again" onclick="again()">もう一度挑戦</button></div>`;
+  return;
+ }
+ const q=questions[current],letters=["A","B","C","D"],classes=["a","b","c","d"];
+ count.textContent=`${current+1} / ${questions.length}`;
+ progress.style.width=`${((current+1)/questions.length)*100}%`;
+ card.innerHTML=`<div class="q-number">QUESTION ${String(current+1).padStart(2,"0")}</div><h1>${q.q}</h1><div class="choices">${q.a.map((text,i)=>`<button class="choice ${classes[i]}" onclick="choose(${i})"><span class="letter">${letters[i]}</span><span>${text}</span></button>`).join("")}</div><button class="next" id="next" onclick="nextQuestion()">次の問題 →</button>`;
+}
+function choose(i){
+ const q=questions[current],buttons=document.querySelectorAll(".choice");
+ buttons.forEach(b=>b.disabled=true);
+ const isCorrect=i===q.correct;
+ if(isCorrect){
+   score++;streak++;
+   if([5,10,15,20,25,30].includes(streak)) playMilestoneSound(streak);
+   else playCorrectSound();
+   updateStreak();
+ }else{streak=0;playWrongSound();updateStreak();}
+
+ const overlay=document.createElement("div");
+ overlay.className="answer-overlay";
+ overlay.innerHTML=`<div class="answer-text ${isCorrect?"correct":"wrong"}">${isCorrect?"正解！":"不正解"}</div>`;
+ document.body.appendChild(overlay);
+
+ setTimeout(()=>{
+   overlay.remove();
+
+   if(!isCorrect){
+     // 不正解なら、正解の選択肢を目立たせる
+     buttons[q.correct].classList.add("correct-highlight");
+     setTimeout(()=>{
+       current++;
+       render();
+     },1200);
+   }else{
+     // 正解なら、そのまま次の問題へ
+     current++;
+     render();
+   }
+ },900);
+}
+function nextQuestion(){current++;render()}
+function again(){
+ current=0;
+ score=0;
+ streak=0;
+ updateStreak();
+ questions.forEach(q=>{
+   const correctText=q.a[q.correct];
+   const shuffled=q.a.slice().sort(()=>Math.random()-0.5);
+   q.a=shuffled;
+   q.correct=q.a.indexOf(correctText);
+ });
+ render();
+}
+render();
+</script>
+</body>
+</html>
